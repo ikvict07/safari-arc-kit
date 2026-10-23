@@ -3,6 +3,8 @@
 Arc browser habits for Safari, implemented as a set of [Hammerspoon](https://www.hammerspoon.org) modules.
 No Safari extension, no Xcode, no mouse polling: a few hundred lines of Lua, two HTML panels, and AppleScript.
 
+![demo: hover sidebar, ctrl-tab switcher, cmd-t command bar](screenshots/demo.gif)
+
 ## What you get
 
 | `⌃Tab` switcher | `⌘T` command bar | Hover sidebar |
