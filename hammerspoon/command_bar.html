@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: rgba(28, 28, 31, 0.96);
+    --fg: #f2f2f2;
+    --muted: #8e8e93;
+    --sel: rgba(255, 255, 255, 0.10);
+    --accent: #6c8cff;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: rgba(248, 248, 250, 0.97); --fg: #1c1c1e; --muted: #6e6e73; --sel: rgba(0, 0, 0, 0.06); }
+  }
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  body { font: 15px -apple-system, "SF Pro Text", Helvetica, sans-serif; color: var(--fg); -webkit-user-select: none; }
+  #panel { background: var(--bg); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.08); box-sizing: border-box; }
+  #inputRow { display: flex; align-items: center; padding: 14px 18px; gap: 12px; }
+  #badge { display: none; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: var(--accent); color: #fff; white-space: nowrap; }
+  #badge.on { display: inline-block; }
+  #q { flex: 1; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 20px; font-weight: 400; caret-color: var(--accent); }
+  #q::placeholder { color: var(--muted); }
+  #rows { padding: 0 8px 8px; }
+  #rows:empty { padding: 0 0 4px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; cursor: default; }
+  .row.sel { background: var(--sel); }
+  .icon { width: 20px; height: 20px; border-radius: 4px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; }
+  .icon img { width: 18px; height: 18px; border-radius: 3px; }
+  .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38%; }
+  .kind { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; flex: none; }
+  .divider { height: 1px; background: rgba(128,128,128,0.18); margin: 0 10px; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <div id="inputRow"><span id="badge"></span><input id="q" type="text" autocomplete="off" spellcheck="false" placeholder=""></div>
+  <div id="divider" class="divider"></div>
+  <div id="rows"></div>
+</div>
+<script>
+  const q = document.getElementById('q');
+  const rowsEl = document.getElementById('rows');
+  const badge = document.getElementById('badge');
+  const divider = document.getElementById('divider');
+  let rows = [], sel = 0;
+
+  function send(msg) { window.webkit.messageHandlers.cmdbar.postMessage(msg); }
+  function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function iconFor(r) {
+    if (r.icon) return '<img src="' + esc(r.icon) + '" onerror="this.replaceWith(document.createTextNode(\'◦\'))">';
+    return ({tab: '▣', url: '↗', 'new-tab': '＋', 'enter-mode': '⌘', google: '⌕'})[r.kind] || '•';
+  }
+
+  function render(data) {
+    rows = data.rows || [];
+    sel = Math.min(data.selected ?? 0, Math.max(rows.length - 1, 0));
+    rowsEl.innerHTML = rows.map((r, i) =>
+      '<div class="row' + (i === sel ? ' sel' : '') + '" data-i="' + i + '">' +
+        '<span class="icon">' + iconFor(r) + '</span>' +
+        '<span class="title">' + esc(r.title) + '</span>' +
+        (r.sub ? '<span class="sub">' + esc(r.sub) + '</span>' : '') +
+        (r.tag ? '<span class="kind">' + esc(r.tag) + '</span>' : '') +
+      '</div>').join('');
+    divider.style.display = rows.length ? '' : 'none';
+    reportHeight();
+  }
+
+  function setMode(data) {
+    badge.textContent = data.badge || '';
+    badge.className = data.badge ? 'on' : '';
+    q.placeholder = data.placeholder || '';
+  }
+
+  function setQuery(text) { q.value = text; }
+  function focusInput() { q.focus(); q.select(); }
+
+  function reportHeight() {
+    const h = document.getElementById('panel').getBoundingClientRect().height;
+    send({type: 'height', h: Math.ceil(h) + 2});
+  }
+
+  function move(d) {
+    if (!rows.length) return;
+    sel = (sel + d + rows.length) % rows.length;
+    [...rowsEl.children].forEach((el, i) => el.classList.toggle('sel', i === sel));
+  }
+
+  q.addEventListener('input', () => send({type: 'query', text: q.value}));
+  q.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) { e.preventDefault(); move(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); send({type: 'select', index: sel + 1, text: q.value}); }
+    else if (e.key === 'Escape') { e.preventDefault(); send({type: 'cancel'}); }
+    else if (e.key === 'Backspace' && q.value === '') { send({type: 'backspace-empty'}); }
+  });
+  rowsEl.addEventListener('mousedown', e => {
+    const el = e.target.closest('.row');
+    if (el) send({type: 'select', index: Number(el.dataset.i) + 1, text: q.value});
+  });
+  window.addEventListener('blur', () => send({type: 'blur'}));
+</script>
+</body>
+</html>
