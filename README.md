@@ -5,6 +5,11 @@ No Safari extension, no Xcode, no mouse polling: a few hundred lines of Lua, two
 
 ## What you get
 
+| `⌃Tab` switcher | `⌘T` command bar | Hover sidebar |
+|---|---|---|
+| ![ctrl-tab overlay](screenshots/ctrltab.png) | ![cmd-t command bar](screenshots/cmdt.png) | ![hover sidebar](screenshots/sidebar.png) |
+
+
 | Feature | How it works |
 |---|---|
 | **`⌃Tab` switcher** | Cycles the 5 most-recently-used tabs of the current window, Arc style: tap for the previous tab, hold `⌃` for an overlay with page previews, `⇧` goes backwards, release `⌃` to switch, `Esc` cancels. Previews are window snapshots taken when you leave a tab. |
