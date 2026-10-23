@@ -138,7 +138,7 @@ local function track(w)
   if pendingTrack then pendingTrack:stop() end
   pendingTrack = hs.timer.doAfter(0.2, function()
     pendingTrack = nil
-    if state.session then return end
+    if state.session then track(w) return end
     local fw = focusedSafariWindow()
     if not fw or fw:id() ~= w:id() then return end
     local tab = safari.currentTab()
@@ -256,6 +256,12 @@ local function startSession(delta)
   local w = focusedSafariWindow()
   if not w then return false end
   local ws = winState(w)
+  local head = ws.mru[1]
+  local title = w:title() or ""
+  if not head or head.name == "" or not title:find(head.name, 1, true) then
+    local tab = safari.currentTab()
+    if tab then ws.mru = mru.touch(ws.mru, mru.key(tab.url, tab.name), tab) end
+  end
   if #ws.mru < 2 then return false end
   local entries = {}
   for i = 1, math.min(MAX_ENTRIES, #ws.mru) do entries[i] = ws.mru[i] end
